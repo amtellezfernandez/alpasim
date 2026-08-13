@@ -4,6 +4,7 @@
 """Configuration schema for driver service supporting multiple model backends."""
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from omegaconf import MISSING
 
@@ -48,6 +49,11 @@ class ModelConfig:
     # instruction to blend towards.
     cfg_guidance_weight: float | None = None
     force_determinism: bool = False  # Alpamayo models only
+    # Free-form pass-through for third-party model plugins. OmegaConf's structured-config
+    # validation rejects unknown keys on this dataclass, so a plugin cannot accept its own
+    # options without ModelConfig knowing them in advance; a plain dict field can carry
+    # arbitrary nested keys, e.g. model.extra.my_param.
+    extra: dict[str, Any] = field(default_factory=dict)
     num_trajectory_samples: int = 1  # Alpamayo models only
     # Where camera JPEGs are decoded.  ``cuda`` leaves the frames on the
     # device, so the model's preprocessing resizes there too (Alpamayo models
