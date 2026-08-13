@@ -190,7 +190,7 @@ fn encode_pose(xyz: &[f32], quat_wxyz: &[f32]) -> Vec<u8> {
 }
 
 fn put_float_field(buf: &mut Vec<u8>, field_number: u32, value: f32) {
-    if value.to_bits() == 0 {
+    if value == 0.0 {
         return;
     }
     put_key(buf, field_number, WIRE_FIXED32);
