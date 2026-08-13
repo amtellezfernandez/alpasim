@@ -13,6 +13,11 @@ FROM nvcr.io/nvidia/pytorch:25.08-py3 AS base-arm64
 FROM nvcr.io/nvidia/k8s/dcgm-exporter:4.4.1-4.6.0-ubuntu22.04@sha256:b7a4241c608253aa829041cc3575ea57082491251a4a626bcdddc68eaf9a3101 AS dcgm-exporter
 ARG TARGETARCH
 FROM base-${TARGETARCH}
+# Re-declare so the value is in scope for RUN instructions in this stage: an ARG
+# after a FROM belongs to that stage and is inherited only by stages derived from
+# it, so the declaration above (inside the dcgm-exporter stage) never reaches this
+# stage. Without this, any `if [ "${TARGETARCH}" = ... ]` here compares against "".
+ARG TARGETARCH
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY --from=dcgm-exporter /usr/bin/dcgm-exporter /usr/bin/dcgm-exporter
