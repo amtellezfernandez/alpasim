@@ -14,6 +14,7 @@ from alpasim_runtime.route_generator import (
 )
 from alpasim_utils.artifact import Artifact
 from alpasim_utils.geometry import Polyline, Pose
+from tests.conftest import patch_plugin_registry
 from tests.fixtures import sample_artifact  # noqa: F401
 
 COS_THETA = math.cos(math.radians(30))
@@ -336,3 +337,35 @@ def test_route_generator_prepare_for_policy():
     for i in range(3):
         assert result.waypoints[i] == pytest.approx(original_points[i])
     assert np.all(np.isnan(result.waypoints[3:]))
+
+
+def test_route_generator_plugin_resolves_through_registry(
+    monkeypatch, rig_waypoints_in_local
+):
+    sentinel = object()
+    seen = {}
+
+    class FakeRegistry:
+        def __init__(self, group):
+            seen["group"] = group
+
+        def create(self, name, **kwargs):
+            seen["name"] = name
+            seen["kwargs"] = kwargs
+            return sentinel
+
+    patch_plugin_registry(monkeypatch, FakeRegistry)
+    vector_map = MagicMock()
+    generator = RouteGenerator.create(
+        rig_waypoints_in_local,
+        vector_map=vector_map,
+        route_generator_type=RouteGeneratorType.MAP,
+        route_start_offset_m=5.0,
+        route_generator_plugin="custom",
+    )
+    assert generator is sentinel
+    assert seen["group"] == "alpasim.route_generators"
+    assert seen["name"] == "custom"
+    assert seen["kwargs"]["recorded_waypoints_in_local"] is rig_waypoints_in_local
+    assert seen["kwargs"]["vector_map"] is vector_map
+    assert seen["kwargs"]["route_start_offset_m"] == 5.0

@@ -17,6 +17,7 @@ def main() -> None:
         "alpasim.scorers": "Scorers",
         "alpasim.tools": "Tools",
         "alpasim.configs": "Configs",
+        "alpasim.route_generators": "Route generators",
     }
     for group, names in info.items():
         label = labels.get(group, group)

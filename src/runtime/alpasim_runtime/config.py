@@ -343,6 +343,10 @@ class SimulationConfig:
 
     route_generator_type: RouteGeneratorType = RouteGeneratorType.MAP
     route_start_offset_m: float = 0.0
+    # Name of an "alpasim.route_generators" entry point to use instead of the
+    # built-in MAP/RECORDED generators. When set, route_generator_type is
+    # ignored. None (default) preserves existing behavior exactly.
+    route_generator_plugin: str | None = None
 
     # Whether to send optional messages to the driver
     send_recording_ground_truth: bool = False

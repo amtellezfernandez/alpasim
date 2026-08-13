@@ -41,6 +41,7 @@ class RouteGenerator(ABC):
         vector_map: VectorMap,
         route_generator_type: RouteGeneratorType,
         route_start_offset_m: float = 0.0,
+        route_generator_plugin: str | None = None,
     ) -> "RouteGenerator | None":
         """
         Factory method to create a RouteGenerator
@@ -49,9 +50,24 @@ class RouteGenerator(ABC):
           vector_map: the map data
           route_generator_type: the type of route generator to create
           route_start_offset_m: approximate distance ahead of the ego projection where routes start
+          route_generator_plugin: name of an "alpasim.route_generators" entry point to use
+            instead of the built-in types below. When set, route_generator_type is ignored.
+            The entry point is called with keyword arguments recorded_waypoints_in_local,
+            vector_map and route_start_offset_m, and must return a RouteGenerator.
         Returns:
           A route generator of the specified type, or None if route generation is disabled
         """
+        if route_generator_plugin is not None:
+            # Deferred import: alpasim-runtime does not declare alpasim-plugins as a
+            # dependency, so the registry is only touched when a plugin is requested.
+            from alpasim_plugins import PluginRegistry
+
+            return PluginRegistry("alpasim.route_generators").create(
+                route_generator_plugin,
+                recorded_waypoints_in_local=recorded_waypoints_in_local,
+                vector_map=vector_map,
+                route_start_offset_m=route_start_offset_m,
+            )
         if route_generator_type == RouteGeneratorType.NONE:
             return None
         elif route_generator_type == RouteGeneratorType.RECORDED:
