@@ -804,6 +804,12 @@ class EgoDriverService(EgodriverServiceServicer):
         self, request: DriveSessionCloseRequest, context: grpc.ServicerContext
     ) -> Empty:
         with self._sessions_lock:
+            if request.session_uuid not in self._sessions:
+                logger.warning(
+                    "close_session for unknown session %s; treating as idempotent",
+                    request.session_uuid,
+                )
+                return Empty()
             logger.info(f"Closing session {request.session_uuid}")
             del self._sessions[request.session_uuid]
         return Empty()
@@ -823,7 +829,14 @@ class EgoDriverService(EgodriverServiceServicer):
         self, request: RolloutCameraImage, context: grpc.ServicerContext
     ) -> Empty:
         grpc_image = request.camera_image
-        session = self._sessions[request.session_uuid]
+        session = self._sessions.get(request.session_uuid)
+        if session is None:
+            logger.warning(
+                "submit_image_observation for unknown session %s at %s; ignoring late frame",
+                request.session_uuid,
+                grpc_image.frame_end_us,
+            )
+            return Empty()
         if grpc_image.logical_id not in session.frame_caches:
             raise ValueError(f"Camera {grpc_image.logical_id} not in desired cameras")
 
@@ -869,7 +882,13 @@ class EgoDriverService(EgodriverServiceServicer):
     def submit_egomotion_observation(
         self, request: RolloutEgoTrajectory, context: grpc.ServicerContext
     ) -> Empty:
-        session = self._sessions[request.session_uuid]
+        session = self._sessions.get(request.session_uuid)
+        if session is None:
+            logger.warning(
+                "submit_egomotion_observation for unknown session %s; ignoring late egomotion",
+                request.session_uuid,
+            )
+            return Empty()
 
         session.add_egoposes(request.trajectory)
 
@@ -887,7 +906,13 @@ class EgoDriverService(EgodriverServiceServicer):
         self, request: RouteRequest, context: grpc.ServicerContext
     ) -> Empty:
         logger.debug("submit_route: waypoint count=%s", len(request.route.waypoints))
-        session = self._sessions[request.session_uuid]
+        session = self._sessions.get(request.session_uuid)
+        if session is None:
+            logger.warning(
+                "submit_route for unknown session %s; ignoring late route",
+                request.session_uuid,
+            )
+            return Empty()
         session.route = request.route
         if self._cfg.route is not None:
             session.update_command_from_route(
@@ -918,7 +943,13 @@ class EgoDriverService(EgodriverServiceServicer):
     def drive(
         self, request: DriveRequest, context: grpc.ServicerContext
     ) -> DriveResponse:
-        session = self._sessions[request.session_uuid]
+        session = self._sessions.get(request.session_uuid)
+        if session is None:
+            logger.warning(
+                "drive for unknown session %s; returning empty trajectory",
+                request.session_uuid,
+            )
+            return DriveResponse(trajectory=Trajectory())
 
         if not self._check_frames_ready(session):
             empty_traj = Trajectory()
