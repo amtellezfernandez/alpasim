@@ -9,7 +9,6 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from alpasim_runtime.config import RouteGeneratorType
 from alpasim_runtime.route_generator import (
     RouteGenerator,
     RouteGeneratorMap,
@@ -57,16 +56,15 @@ def route_plugin_package(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("vector_map", [None, object()])
-def test_route_generator_plugin_takes_precedence(
+def test_route_generator_type_selects_plugin(
     route_plugin_package, rig_waypoints_in_local, vector_map
 ):
     assert "custom" in route_plugin_package.route_generators.get_names()
     generator = RouteGenerator.create(
         rig_waypoints_in_local,
         vector_map,
-        RouteGeneratorType.NONE,
+        "custom",
         route_start_offset_m=40.0,
-        route_generator_plugin="custom",
     )
     assert isinstance(generator, CustomRouteGenerator)
     assert generator.vector_map is vector_map
@@ -79,7 +77,7 @@ def test_route_generator_plugin_takes_precedence(
     assert np.linalg.norm(route.waypoints[0]) >= 40.0
 
 
-def test_unknown_route_generator_plugin_does_not_fall_back(
+def test_unknown_route_generator_type_does_not_fall_back(
     route_plugin_package, rig_waypoints_in_local
 ):
     with pytest.raises(
@@ -89,8 +87,7 @@ def test_unknown_route_generator_plugin_does_not_fall_back(
         RouteGenerator.create(
             rig_waypoints_in_local,
             None,
-            RouteGeneratorType.RECORDED,
-            route_generator_plugin="missing-route-plugin",
+            "missing-route-plugin",
         )
 
 
@@ -105,17 +102,22 @@ def test_builtin_routes_without_plugin_package():
                 import sys
                 sys.modules["alpasim_plugins"] = None
                 import numpy as np
-                from alpasim_runtime.config import RouteGeneratorType
                 from alpasim_runtime.route_generator import RouteGenerator, RouteGeneratorRecorded
                 from alpasim_utils.geometry import Pose
 
                 waypoints = np.array([[0., 0., 0.], [100., 0., 0.]])
-                assert RouteGenerator.create(waypoints, None, RouteGeneratorType.NONE) is None
-                generator = RouteGenerator.create(waypoints, None, RouteGeneratorType.RECORDED)
+                assert RouteGenerator.create(waypoints, None, "NONE") is None
+                generator = RouteGenerator.create(waypoints, None, "RECORDED")
                 assert isinstance(generator, RouteGeneratorRecorded)
                 pose = Pose(np.zeros(3), np.array([0., 0., 0., 1.]))
                 route = generator.generate_route(0, pose)
                 np.testing.assert_allclose(route.waypoints[-1], [80., 0., 0.])
+                try:
+                    RouteGenerator.create(waypoints, None, "custom")
+                except ValueError as exc:
+                    assert "alpasim_plugins is not installed" in str(exc)
+                else:
+                    raise AssertionError("unknown route type without plugins must raise")
                 """
             ),
         ],
@@ -145,7 +147,7 @@ def test_route_generator_none_skips_waypoint_validation():
     route_generator = RouteGenerator.create(
         np.zeros((1, 3)),
         vector_map=MagicMock(),
-        route_generator_type=RouteGeneratorType.NONE,
+        route_generator_type="NONE",
     )
 
     assert route_generator is None

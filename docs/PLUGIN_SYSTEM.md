@@ -121,14 +121,17 @@ the runtime user configuration:
 
 ```yaml
 simulation_config:
-  route_generator_plugin: custom
+  route_generator_type: custom
   route_start_offset_m: 0.0
 ```
 
-When set, `route_generator_plugin` overrides `route_generator_type`, including
-`NONE`. An unknown name raises `PluginNotFoundError`; it does not fall back to a
-built-in generator. When unset or `null`, the existing `MAP`/`RECORDED`/`NONE`
-selection is used and the runtime does not need `alpasim_plugins` for routing.
+`route_generator_type` accepts the built-in names `MAP`, `RECORDED` and `NONE`,
+or the name of a registered route plugin. The built-in names are reserved: a
+plugin registered under one can never be selected, and the runtime logs a
+warning at startup. The name is resolved when the configuration is parsed, so an
+unknown name raises `PluginNotFoundError` before any rollout starts; it does not
+fall back to a built-in generator. Built-in routing does not need
+`alpasim_plugins` installed.
 
 ### Adding Hydra configs
 

@@ -259,12 +259,6 @@ class PhysicsUpdateMode(Enum):
     ALL_ACTORS = 2
 
 
-class RouteGeneratorType(Enum):
-    MAP = 0
-    RECORDED = 1
-    NONE = 2
-
-
 class RenderBundling(Enum):
     """Which sensorsim bundled-render RPC to use for a control step.
 
@@ -341,11 +335,9 @@ class SimulationConfig:
         0  # models time delays from image capture to planner output to controller
     )
 
-    route_generator_type: RouteGeneratorType = RouteGeneratorType.MAP
+    # "MAP", "RECORDED", "NONE", or the name of an alpasim.route_generators plugin.
+    route_generator_type: str = "MAP"
     route_start_offset_m: float = 0.0
-    # Optional alpasim.route_generators entry point; overrides route_generator_type,
-    # including NONE. Unset preserves built-in routing without alpasim_plugins.
-    route_generator_plugin: str | None = None
 
     # Whether to send optional messages to the driver
     send_recording_ground_truth: bool = False
